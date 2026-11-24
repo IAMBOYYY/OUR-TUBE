@@ -4,11 +4,12 @@ export type Video = {
   id: string;
   title: string;
   description: string;
-  thumbnail: string;
+  thumbnail?: string;
   videoUrl: string;
   type: VideoType;
   tags: string[];
   date: string;
+  duration?: string;
 };
 
 export type Channel = {

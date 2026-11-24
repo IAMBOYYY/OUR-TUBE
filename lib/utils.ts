@@ -34,6 +34,57 @@ export function formatDate(value: string): string {
   }).format(date);
 }
 
+export function formatRelativeDate(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const difference = date.getTime() - Date.now();
+  const absolute = Math.abs(difference);
+
+  if (absolute < 60_000) {
+    return "just now";
+  }
+
+  const units: Array<{
+    limit: number;
+    divisor: number;
+    unit: Intl.RelativeTimeFormatUnit;
+  }> = [
+    { limit: 60 * 60 * 1000, divisor: 60 * 1000, unit: "minute" },
+    { limit: 24 * 60 * 60 * 1000, divisor: 60 * 60 * 1000, unit: "hour" },
+    { limit: 7 * 24 * 60 * 60 * 1000, divisor: 24 * 60 * 60 * 1000, unit: "day" },
+    {
+      limit: 30 * 24 * 60 * 60 * 1000,
+      divisor: 7 * 24 * 60 * 60 * 1000,
+      unit: "week",
+    },
+    {
+      limit: 365 * 24 * 60 * 60 * 1000,
+      divisor: 30 * 24 * 60 * 60 * 1000,
+      unit: "month",
+    },
+    {
+      limit: Number.POSITIVE_INFINITY,
+      divisor: 365 * 24 * 60 * 60 * 1000,
+      unit: "year",
+    },
+  ];
+
+  const formatter = new Intl.RelativeTimeFormat("en", {
+    numeric: "always",
+  });
+  const matched =
+    units.find((item) => absolute < item.limit) ?? units[units.length - 1];
+
+  return formatter.format(
+    Math.round(difference / matched.divisor),
+    matched.unit,
+  );
+}
+
 export function matchesQuery(video: VideoWithChannel, query: string): boolean {
   const normalized = query.trim().toLowerCase();
 

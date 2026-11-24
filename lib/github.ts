@@ -19,11 +19,12 @@ const videoSchema = z.object({
   id: z.string().trim().min(1),
   title: z.string().trim().min(1),
   description: z.string().default(""),
-  thumbnail: z.string().trim().min(1),
+  thumbnail: z.string().trim().min(1).optional(),
   videoUrl: z.string().trim().min(1),
   type: z.enum(["video", "music"]),
   tags: z.array(z.string()).default([]),
   date: z.string().trim().min(1),
+  duration: z.string().trim().min(1).optional(),
 });
 
 const videosFileSchema = z.array(videoSchema);
@@ -51,6 +52,11 @@ type RepositoryRef = {
   repo: string;
   branch: string;
   htmlUrl: string;
+};
+
+type RepositorySearchResult = {
+  repositories: RepositoryRef[];
+  failed: boolean;
 };
 
 function githubHeaders(): HeadersInit {
@@ -136,7 +142,7 @@ async function mapWithLimit<T, R>(
   return results;
 }
 
-async function searchRepositories(): Promise<RepositoryRef[]> {
+async function searchRepositories(): Promise<RepositorySearchResult> {
   const repositories: RepositoryRef[] = [];
 
   for (let page = 1; page <= MAX_SEARCH_PAGES; page += 1) {
@@ -146,11 +152,16 @@ async function searchRepositories(): Promise<RepositoryRef[]> {
     url.searchParams.set("page", String(page));
 
     const data = await fetchJson(url.toString(), githubHeaders());
+
+    if (data === null) {
+      return { repositories, failed: true };
+    }
+
     const parsed = repositorySearchSchema.safeParse(data);
 
     if (!parsed.success) {
       logWarning("GitHub search returned an unexpected response", parsed.error);
-      break;
+      return { repositories, failed: true };
     }
 
     for (const item of parsed.data.items) {
@@ -169,16 +180,19 @@ async function searchRepositories(): Promise<RepositoryRef[]> {
 
   const seen = new Set<string>();
 
-  return repositories.filter((repository) => {
-    const key = `${repository.owner}/${repository.repo}`.toLowerCase();
+  return {
+    repositories: repositories.filter((repository) => {
+      const key = `${repository.owner}/${repository.repo}`.toLowerCase();
 
-    if (seen.has(key)) {
-      return false;
-    }
+      if (seen.has(key)) {
+        return false;
+      }
 
-    seen.add(key);
-    return true;
-  });
+      seen.add(key);
+      return true;
+    }),
+    failed: false,
+  };
 }
 
 async function loadChannel(
@@ -213,7 +227,9 @@ async function loadChannel(
 
   const videos: Video[] = videosResult.data.map((video) => ({
     ...video,
-    thumbnail: resolveRepoUrl(video.thumbnail, rawBase),
+    thumbnail: video.thumbnail
+      ? resolveRepoUrl(video.thumbnail, rawBase)
+      : undefined,
     videoUrl: resolveRepoUrl(video.videoUrl, rawBase),
   }));
 
@@ -230,9 +246,7 @@ async function loadChannel(
   };
 }
 
-export async function getChannels(): Promise<Channel[]> {
-  const repositories = await searchRepositories();
-
+async function loadChannels(repositories: RepositoryRef[]): Promise<Channel[]> {
   if (repositories.length === 0) {
     return [];
   }
@@ -247,6 +261,38 @@ export async function getChannels(): Promise<Channel[]> {
   );
 
   return channels.filter((channel): channel is Channel => channel !== null);
+}
+
+function flattenVideos(channels: Channel[]): VideoWithChannel[] {
+  return channels.flatMap((channel) =>
+    channel.videos.map((video) => ({
+      ...video,
+      owner: channel.owner,
+      repo: channel.repo,
+      channelName: channel.name,
+      channelLogo: channel.logo,
+      channelHtmlUrl: channel.htmlUrl,
+    })),
+  );
+}
+
+export async function getChannels(): Promise<Channel[]> {
+  const { repositories } = await searchRepositories();
+  return loadChannels(repositories);
+}
+
+export async function getAllVideosResult(): Promise<{
+  videos: VideoWithChannel[];
+  failed: boolean;
+}> {
+  const { repositories, failed } = await searchRepositories();
+
+  if (failed) {
+    return { videos: [], failed: true };
+  }
+
+  const channels = await loadChannels(repositories);
+  return { videos: flattenVideos(channels), failed: false };
 }
 
 export async function getChannel(
@@ -276,16 +322,6 @@ export async function getChannel(
 }
 
 export async function getAllVideos(): Promise<VideoWithChannel[]> {
-  const channels = await getChannels();
-
-  return channels.flatMap((channel) =>
-    channel.videos.map((video) => ({
-      ...video,
-      owner: channel.owner,
-      repo: channel.repo,
-      channelName: channel.name,
-      channelLogo: channel.logo,
-      channelHtmlUrl: channel.htmlUrl,
-    })),
-  );
+  const { videos } = await getAllVideosResult();
+  return videos;
 }

@@ -1,4 +1,4 @@
-# Contributing to OUR TUBE
+# Contributing to OurTube
 
 Thanks for helping build an open video platform. This project is intentionally small, dependency-light, and easy to fork.
 

@@ -1,4 +1,4 @@
-export const SITE_NAME = "OUR TUBE";
+export const SITE_NAME = "OurTube";
 export const SITE_DESCRIPTION =
   "An open-source, community-powered video platform. Discover independent channels published through GitHub.";
 export const GITHUB_URL = "https://github.com/IAMBOYYY/OUR-TUBE";

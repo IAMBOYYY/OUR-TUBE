@@ -1,5 +1,6 @@
 "use client";
 
+import { VideoOff } from "lucide-react";
 import { useEffect } from "react";
 
 export default function Error({
@@ -14,20 +15,18 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6">
-      <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">
-        Transmission interrupted
-      </p>
-      <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+    <div className="flex flex-col items-center px-4 py-24 text-center">
+      <VideoOff className="h-10 w-10 text-muted" aria-hidden="true" />
+      <h1 className="mt-4 text-xl font-semibold tracking-tight">
         Something went wrong.
       </h1>
-      <p className="mt-4 max-w-lg text-sm leading-6 text-muted">
-        The discovery feed could not be loaded. This is usually temporary.
+      <p className="mt-2 max-w-md text-sm leading-6 text-muted">
+        The page could not be loaded. Try again.
       </p>
       <button
         type="button"
         onClick={reset}
-        className="mt-8 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-rose-500/20 transition hover:bg-primary/90"
+        className="mt-6 rounded-full border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-surface"
       >
         Try again
       </button>

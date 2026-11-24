@@ -1,16 +1,16 @@
-# OUR TUBE channel template
+# OurTube channel template
 
-Use this folder as the starting point for a channel that appears on OUR TUBE.
+Use this folder as the starting point for a channel that appears on OurTube.
 
 ![Placeholder channel banner](assets/banner.png)
 
 ## Create your channel
 
-1. Copy this folder into a new public GitHub repository, or use the OUR TUBE repository as a GitHub template if that option is enabled.
+1. Copy this folder into a new public GitHub repository, or use the OurTube repository as a GitHub template if that option is enabled.
 2. Rename the channel in `channel.json` and replace `assets/logo.png` and `assets/banner.png`.
-3. Add your videos to `videos.json`.
+3. Add your videos to `videos.json` and add thumbnail images to `assets/` if you want custom thumbnails.
 4. Host the actual video and audio files outside the repository (see below).
-5. Add the topic **`openyoutube-channel`** to your repository. OUR TUBE discovers channels through this GitHub topic.
+5. Add the topic **`openyoutube-channel`** to your repository. OurTube discovers channels through this GitHub topic.
 6. Make sure the repository is public and that `channel.json` and `videos.json` are valid JSON on the default branch.
 
 Discovery is cached for five minutes. Your channel should appear after the next refresh.
@@ -23,7 +23,8 @@ channel-template/
 ├── videos.json
 ├── assets/
 │   ├── logo.png
-│   └── banner.png
+│   ├── banner.png
+│   └── thumbnail.png
 └── README.md
 ```
 
@@ -53,11 +54,12 @@ channel-template/
     "id": "unique-video-id",
     "title": "Video title",
     "description": "A description of the video.",
-    "thumbnail": "https://example.com/thumb.jpg",
+    "thumbnail": "assets/thumbnail.png",
     "videoUrl": "https://example.com/video.mp4",
     "type": "video",
     "tags": ["open source", "tutorial"],
-    "date": "2026-01-15"
+    "date": "2026-01-15",
+    "duration": "12:04"
   }
 ]
 ```
@@ -67,13 +69,22 @@ channel-template/
 | `id` | Yes | Unique within the channel. Used in the watch URL. |
 | `title` | Yes | Video title. |
 | `description` | Yes | Plain text. |
-| `thumbnail` | Yes | Absolute URL or a path relative to the repository. |
+| `thumbnail` | No | Full URL or a path relative to the repository. If omitted or broken, the app tries the first frame of the video. |
 | `videoUrl` | Yes | Direct URL to an MP4/WebM file, or an MP3 for music. |
 | `type` | Yes | `"video"` or `"music"`. Music uses the audio player. |
 | `tags` | Yes | Array of strings. Used by search. |
 | `date` | Yes | Any date string, ideally ISO `YYYY-MM-DD`. |
+| `duration` | No | Text shown in the thumbnail corner, for example `"12:04"`. |
 
-Relative asset paths such as `assets/logo.png` are resolved against your repository's default branch on `raw.githubusercontent.com`.
+Relative asset paths such as `assets/logo.png` or `assets/thumbnail.png` are resolved against your repository's default branch on `raw.githubusercontent.com`.
+
+## Add a thumbnail
+
+1. Put the image in the `assets/` folder, for example `assets/my-video.jpg`.
+2. Set the video's `thumbnail` field to `"assets/my-video.jpg"`.
+3. Use a 16:9 image, ideally 1280×720 or larger.
+
+You can also use a full URL. If a thumbnail is missing or fails to load, OurTube falls back to the first frame of the video, then to a gray placeholder. The optional `duration` field is displayed on the thumbnail.
 
 ## Host your media outside the repo
 
@@ -90,7 +101,7 @@ The sample videos in this template use public demo files. Replace them with your
 
 ## Validation rules
 
-OUR TUBE validates both files with Zod. Repositories with missing, invalid, or malformed JSON are skipped without breaking the rest of the discovery feed. Keep IDs unique and use only `video` or `music` for the `type` field.
+OurTube validates both files with Zod. Repositories with missing, invalid, or malformed JSON are skipped without breaking the rest of the discovery feed. Keep IDs unique and use only `video` or `music` for the `type` field.
 
 ## Get listed
 
@@ -99,4 +110,4 @@ OUR TUBE validates both files with Zod. Repositories with missing, invalid, or m
 3. Add the topic `openyoutube-channel`.
 4. Search the topic on GitHub to confirm it is listed: <https://github.com/topics/openyoutube-channel>.
 
-To remove your channel from OUR TUBE, remove the topic from your repository.
+To remove your channel from OurTube, remove the topic from your repository.

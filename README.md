@@ -1,26 +1,27 @@
-# OUR TUBE
+# OurTube
 
 An open-source, community-powered video platform. Channels live in public GitHub repositories, media lives on real object storage, and the feed is discovered through a GitHub topic — no database required.
 
 Built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, and **Zod**. Designed to deploy for free on **Vercel**.
 
-## Why OUR TUBE?
+## Why OurTube?
 
 - **Open discovery** — any public repository with the `openyoutube-channel` topic can appear.
 - **Creator-owned media** — videos are hosted on GitHub Releases, Cloudflare R2, or any direct-URL host.
 - **No database** — GitHub is the index and the source of truth.
-- **Fast, clean viewing** — responsive grid, dark mode by default, search, filters, and random suggestions.
+- **Fast, clean viewing** — responsive grid, system-aware light/dark themes, search, filters, and random suggestions.
 - **Forkable** — the whole platform is MIT licensed and easy to self-host.
 
 ## Features
 
 - Community discovery feed with a random shuffle on every load.
-- Search by video title, channel name, or tag.
+- Header search by video title, channel name, or tag.
 - Filter chips for **All**, **Videos**, and **Music**.
-- Channel pages with banner, logo, description, and uploads.
-- Watch pages with an HTML5 video player, an audio player for music, and eight random suggestions.
-- Dark mode by default with a persistent light/dark toggle.
-- Responsive layouts, rounded cards, hover states, and skeleton loaders.
+- Channel directory and channel pages with banner, logo, description, and uploads.
+- Watch pages with an HTML5 video player, an audio player for music, and a random "More videos" list.
+- System-aware light/dark theme with a persistent toggle.
+- Optional thumbnails with first-frame fallback, plus optional duration badges.
+- Responsive layouts and skeleton loaders.
 - Zod-validated channel data with graceful skipping of broken repositories.
 - Five-minute caching through Next.js `fetch` revalidation.
 
@@ -64,7 +65,7 @@ The fastest path is the [`channel-template`](./channel-template) folder.
 
 1. Create a new **public** GitHub repository from the template.
 2. Edit `channel.json` and `videos.json`.
-3. Replace `assets/logo.png` and `assets/banner.png`.
+3. Replace `assets/logo.png` and `assets/banner.png`, and add thumbnails to `assets/` if you want them.
 4. Upload video/audio files to **GitHub Releases** or **Cloudflare R2** — never commit large media to the repository.
 5. Add the topic **`openyoutube-channel`** to the repository.
 6. Wait for the five-minute cache to refresh.
@@ -94,12 +95,13 @@ Read the full guide in [`channel-template/README.md`](./channel-template/README.
     "videoUrl": "https://cdn.example.com/welcome.mp4",
     "type": "video",
     "tags": ["welcome", "open source"],
-    "date": "2026-01-15"
+    "date": "2026-01-15",
+    "duration": "12:04"
   }
 ]
 ```
 
-`type` must be `"video"` or `"music"`. Music entries use the audio player.
+`type` must be `"video"` or `"music"`. Music entries use the audio player. `thumbnail` and `duration` are optional. Relative thumbnail paths such as `"assets/my-video.jpg"` are resolved against the channel repository.
 
 ## Deploy to Vercel
 
@@ -115,6 +117,7 @@ No database, storage bucket, or extra services are required. The app uses ISR an
 ```text
 app/
 ├── page.tsx                       # Discovery feed
+├── channels/                      # Channel directory
 ├── channel/[owner]/[repo]/        # Channel page + loading skeleton
 ├── watch/[owner]/[repo]/[id]/     # Watch page + loading skeleton
 ├── layout.tsx                     # Theme bootstrap, header, footer
@@ -122,7 +125,7 @@ app/
 ├── error.tsx
 ├── not-found.tsx
 └── globals.css
-components/                        # Cards, search/filter, players, UI
+components/                        # Cards, header, search, players, UI
 lib/
 ├── github.ts                      # GitHub discovery + Zod validation
 ├── types.ts
@@ -154,4 +157,4 @@ Issues and pull requests are welcome. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md
 
 ## License
 
-[MIT](./LICENSE) © OUR TUBE contributors.
+[MIT](./LICENSE) © OurTube contributors.

@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
+import { ExternalLink, GitBranch, VideoOff } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import {
-  ArrowUpRightIcon,
-  GithubIcon,
-  MusicIcon,
-  PlayIcon,
-} from "@/components/icons";
-import { SmartImage } from "@/components/smart-image";
+import { MediaImage } from "@/components/media-image";
 import { VideoCard } from "@/components/video-card";
 import { getChannel } from "@/lib/github";
 
@@ -32,7 +27,7 @@ export async function generateMetadata({
     title: channel.name,
     description:
       channel.description ||
-      `${channel.name} publishes videos and music on OUR TUBE.`,
+      `${channel.name} publishes videos and music on OurTube.`,
     openGraph: {
       title: channel.name,
       description: channel.description,
@@ -62,92 +57,70 @@ export default async function ChannelPage({ params }: ChannelPageProps) {
   ).length;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <div className="relative h-44 overflow-hidden rounded-3xl border border-border bg-card sm:h-60 lg:h-72">
-        <SmartImage
+    <div className="mx-auto max-w-[1600px] px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
+      <div className="overflow-hidden rounded-lg border border-border">
+        <MediaImage
           src={channel.banner}
           alt={`${channel.name} banner`}
-          className="h-full w-full"
-          imageClassName="object-cover"
+          className="h-32 w-full sm:h-48 lg:h-56"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/25 to-transparent" />
       </div>
 
-      <div className="relative -mt-12 px-4 sm:-mt-16 sm:px-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex items-end gap-4 sm:gap-6">
-            <SmartImage
-              src={channel.logo}
-              alt={`${channel.name} logo`}
-              className="h-24 w-24 shrink-0 rounded-3xl border-4 border-background shadow-2xl sm:h-32 sm:w-32"
-            />
-            <div className="min-w-0 pb-1 sm:pb-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-                Channel
-              </p>
-              <h1 className="mt-1 truncate text-3xl font-black tracking-tight sm:text-5xl">
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
+        <MediaImage
+          src={channel.logo}
+          alt={`${channel.name} logo`}
+          className="h-20 w-20 shrink-0 rounded-full border border-border sm:h-28 sm:w-28"
+        />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">
                 {channel.name}
               </h1>
-              <p className="mt-1 truncate text-sm text-muted">
+              <p className="mt-1 text-sm text-muted">
                 @{channel.owner}/{channel.repo}
               </p>
             </div>
+
+            <Link
+              href={channel.htmlUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-surface"
+            >
+              <GitBranch className="h-3.5 w-3.5" aria-hidden="true" />
+              Repository
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
           </div>
 
-          <Link
-            href={channel.htmlUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex w-fit items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold transition hover:border-primary/30 hover:text-primary"
-          >
-            <GithubIcon className="h-4 w-4" />
-            View repository
-            <ArrowUpRightIcon className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-
-        <div className="mt-6 max-w-3xl">
-          <p className="whitespace-pre-line text-sm leading-6 text-muted sm:text-base sm:leading-7">
+          <p className="mt-3 whitespace-pre-line text-sm leading-6 text-muted">
             {channel.description || "This channel has not added a description."}
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5">
-              <PlayIcon className="h-3 w-3 text-primary" />
-              {channel.videos.length}{" "}
-              {channel.videos.length === 1 ? "upload" : "uploads"}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5">
-              <MusicIcon className="h-3 w-3 text-primary" />
-              {musicCount} music
-            </span>
-            <span className="rounded-lg border border-border bg-card px-2.5 py-1.5">
-              branch: {channel.defaultBranch}
-            </span>
-          </div>
+
+          <p className="mt-2 text-xs text-muted">
+            {channel.videos.length}{" "}
+            {channel.videos.length === 1 ? "video" : "videos"}
+            {musicCount > 0 ? ` · ${musicCount} music` : ""}
+          </p>
         </div>
       </div>
 
-      <div className="mt-10 border-t border-border pt-8 sm:mt-12">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-              Videos
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              Everything published by {channel.name}.
-            </p>
-          </div>
-        </div>
+      <div className="mt-6 border-t border-border pt-5">
+        <h2 className="text-base font-semibold">Videos</h2>
 
         {videos.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-border bg-card/60 px-6 py-14 text-center">
-            <h3 className="text-lg font-bold">No uploads yet</h3>
-            <p className="mt-2 text-sm text-muted">
-              This channel has not added anything to videos.json.
+          <div className="flex flex-col items-center px-4 py-20 text-center">
+            <VideoOff className="h-9 w-9 text-muted" aria-hidden="true" />
+            <p className="mt-4 text-base font-semibold">No videos right now</p>
+            <p className="mt-1 text-sm text-muted">
+              Check back soon. New videos show up here.
             </p>
           </div>
         ) : (
-          <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {videos.map((video) => (
               <VideoCard
                 key={`${video.owner}/${video.repo}/${video.id}`}
