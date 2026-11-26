@@ -2,14 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ActionRow } from "@/components/action-row";
+import { FeedError } from "@/components/feed-states";
 import { MediaImage } from "@/components/media-image";
-import { SuggestedVideos } from "@/components/suggested-videos";
-import { VideoThumbnail } from "@/components/video-thumbnail";
-import { getAllVideos, getChannel } from "@/lib/github";
+import { MusicPlayer } from "@/components/player/music-player";
+import { VideoPlayer } from "@/components/player/video-player";
+import { SubscribeButton } from "@/components/subscribe-button";
+import { VideoCard } from "@/components/video-card";
+import { VideoDescription } from "@/components/video-description";
+import { getChannel, getSiteData } from "@/lib/github";
 import type { VideoWithChannel } from "@/lib/types";
-import { channelHref, formatRelativeDate } from "@/lib/utils";
+import {
+  channelHref,
+  formatRelativeDate,
+  formatSubscribers,
+  watchHref,
+} from "@/lib/utils";
 
 export const revalidate = 300;
+export const maxDuration = 60;
 
 type WatchPageProps = {
   params: Promise<{ owner: string; repo: string; id: string }>;
@@ -35,17 +46,24 @@ export async function generateMetadata({
       type: "video.other",
       images: video.thumbnail ? [{ url: video.thumbnail }] : undefined,
     },
+    twitter: {
+      card: "summary_large_image",
+      title: video.title,
+      description: video.description,
+      images: video.thumbnail ? [video.thumbnail] : undefined,
+    },
   };
 }
 
 export default async function WatchPage({ params }: WatchPageProps) {
   const { owner, repo, id } = await params;
-  const [channel, allVideos] = await Promise.all([
-    getChannel(owner, repo),
-    getAllVideos(),
-  ]);
+  const [channel, site] = await Promise.all([getChannel(owner, repo), getSiteData()]);
 
   if (!channel) {
+    if (site.failed && site.channels.length === 0) {
+      return <FeedError />;
+    }
+
     notFound();
   }
 
@@ -56,6 +74,17 @@ export default async function WatchPage({ params }: WatchPageProps) {
   }
 
   const currentKey = `${channel.owner}/${channel.repo}/${video.id}`;
+  const current: VideoWithChannel = {
+    ...video,
+    owner: channel.owner,
+    repo: channel.repo,
+    channelName: channel.name,
+    channelLogo: channel.logo,
+    channelHtmlUrl: channel.htmlUrl,
+    hasDiscussions: channel.hasDiscussions,
+    stars: channel.stars,
+  };
+
   const channelVideos: VideoWithChannel[] = channel.videos.map((item) => ({
     ...item,
     owner: channel.owner,
@@ -63,62 +92,57 @@ export default async function WatchPage({ params }: WatchPageProps) {
     channelName: channel.name,
     channelLogo: channel.logo,
     channelHtmlUrl: channel.htmlUrl,
+    hasDiscussions: channel.hasDiscussions,
+    stars: channel.stars,
   }));
-  const suggestionPool = new Map<string, VideoWithChannel>();
 
-  for (const item of [...allVideos, ...channelVideos]) {
-    suggestionPool.set(`${item.owner}/${item.repo}/${item.id}`, item);
+  const pool = new Map<string, VideoWithChannel>();
+
+  for (const item of [...site.videos, ...channelVideos]) {
+    const key = `${item.owner}/${item.repo}/${item.id}`;
+
+    if (key !== currentKey) {
+      pool.set(key, item);
+    }
   }
 
+  const upNext = Array.from(pool.values())
+    .sort((a, b) => {
+      const first = new Date(a.date).getTime();
+      const second = new Date(b.date).getTime();
+      return (Number.isFinite(second) ? second : 0) - (Number.isFinite(first) ? first : 0);
+    })
+    .slice(0, 10);
+
+  const next = upNext[0];
+
   return (
-    <div className="mx-auto max-w-[1600px] px-0 py-4 sm:px-4 sm:py-6 lg:px-6">
+    <div className="mx-auto max-w-[1600px] px-0 py-0 sm:px-4 sm:py-6 lg:px-6">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0">
-          <div className="overflow-hidden border-y border-border bg-black sm:rounded-lg sm:border">
-            {video.type === "music" ? (
-              <div>
-                <div className="flex min-h-[18rem] flex-col items-center justify-center gap-4 px-4 py-10">
-                  <VideoThumbnail
-                    video={video}
-                    allowVideoFallback={false}
-                    showDuration={false}
-                    className="w-48 rounded-md border border-neutral-800"
-                  />
-                  <span className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-                    Music
-                  </span>
-                </div>
-                <div className="border-t border-neutral-800 p-3">
-                  <audio
-                    controls
-                    preload="metadata"
-                    aria-label={`${video.title} audio player`}
-                    className="w-full"
-                  >
-                    <source src={video.videoUrl} />
-                    Your browser does not support the audio element.
-                  </audio>
-                </div>
-              </div>
+          <div className="sticky top-[97px] z-20 bg-black lg:static lg:overflow-hidden lg:rounded-xl lg:border lg:border-border">
+            {current.type === "music" ? (
+              <MusicPlayer video={current} />
             ) : (
-              <video
-                controls
-                playsInline
-                preload="metadata"
-                poster={video.thumbnail}
-                aria-label={`${video.title} video player`}
-                className="aspect-video w-full bg-black"
-              >
-                <source src={video.videoUrl} />
-                Your browser does not support the video element.
-              </video>
+              <VideoPlayer
+                video={current}
+                nextHref={next ? watchHref(next.owner, next.repo, next.id) : undefined}
+                nextTitle={next?.title}
+              />
             )}
           </div>
 
           <div className="px-3 pt-4 sm:px-0">
             <h1 className="text-xl font-semibold leading-7 tracking-tight sm:text-2xl">
-              {video.title}
+              {current.title}
             </h1>
+
+            <p
+              className="mt-1 text-sm text-muted"
+              suppressHydrationWarning
+            >
+              {formatSubscribers(channel.stars)} · {formatRelativeDate(current.date)}
+            </p>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <Link
@@ -135,46 +159,53 @@ export default async function WatchPage({ params }: WatchPageProps) {
                     {channel.name}
                   </p>
                   <p className="truncate text-xs text-muted">
-                    @{channel.owner}/{channel.repo}
+                    {formatSubscribers(channel.stars)}
                   </p>
                 </div>
               </Link>
 
-              <p className="text-xs text-muted" suppressHydrationWarning>
-                {formatRelativeDate(video.date)}
-              </p>
+              <SubscribeButton owner={channel.owner} repo={channel.repo} />
             </div>
 
-            <div className="mt-4 border-t border-border pt-4">
-              <p className="text-sm text-muted">
-                {video.type === "music" ? "Music" : "Video"}
-              </p>
-              <p className="mt-2 whitespace-pre-line text-sm leading-6">
-                {video.description || "No description was provided."}
-              </p>
+            <div className="mt-4">
+              <ActionRow video={current} />
+            </div>
 
-              {video.tags.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {video.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-surface px-2.5 py-1 text-xs text-muted"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+            <div className="mt-4">
+              <VideoDescription
+                description={current.description}
+                tags={current.tags}
+                dateLabel={formatRelativeDate(current.date)}
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 px-3 sm:px-0 lg:hidden">
+            <h2 className="mb-3 text-base font-semibold">Up next</h2>
+            <div className="space-y-3">
+              {upNext.map((item) => (
+                <VideoCard
+                  key={`${item.owner}/${item.repo}/${item.id}`}
+                  video={item}
+                  compact
+                />
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="px-3 sm:px-0">
-          <SuggestedVideos
-            videos={Array.from(suggestionPool.values())}
-            excludeKey={currentKey}
-          />
-        </div>
+        <aside aria-label="Up next" className="hidden px-3 sm:px-0 lg:block">
+          <h2 className="mb-3 text-base font-semibold">Up next</h2>
+          <div className="space-y-3">
+            {upNext.map((item) => (
+              <VideoCard
+                key={`${item.owner}/${item.repo}/${item.id}`}
+                video={item}
+                compact
+              />
+            ))}
+          </div>
+        </aside>
       </div>
     </div>
   );

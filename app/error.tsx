@@ -1,6 +1,6 @@
 "use client";
 
-import { VideoOff } from "lucide-react";
+import { RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect } from "react";
 
 export default function Error({
@@ -16,7 +16,7 @@ export default function Error({
 
   return (
     <div className="flex flex-col items-center px-4 py-24 text-center">
-      <VideoOff className="h-10 w-10 text-muted" aria-hidden="true" />
+      <TriangleAlert className="h-10 w-10 text-muted" aria-hidden="true" />
       <h1 className="mt-4 text-xl font-semibold tracking-tight">
         Something went wrong.
       </h1>
@@ -26,8 +26,9 @@ export default function Error({
       <button
         type="button"
         onClick={reset}
-        className="mt-6 rounded-full border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-surface"
+        className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium transition-colors hover:bg-surface"
       >
+        <RefreshCw className="h-4 w-4" aria-hidden="true" />
         Try again
       </button>
     </div>

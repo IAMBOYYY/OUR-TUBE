@@ -1,0 +1,25 @@
+[
+  {
+    "title": "My first video",
+    "description": "A short description of this video.",
+    "videoUrl": "https://github.com/USERNAME/REPO/releases/download/video1/my-first-video.mp4"
+  },
+  {
+    "id": "my-first-video",
+    "title": "My first video",
+    "description": "A short description of this video.",
+    "videoUrl": "https://github.com/USERNAME/REPO/releases/download/video1/my-first-video.mp4",
+    "thumbnail": "assets/my-first-video.jpg",
+    "type": "video",
+    "tags": ["intro", "first"],
+    "date": "2026-11-04",
+    "duration": "3:20",
+    "captions": [
+      {
+        "lang": "en",
+        "label": "English",
+        "url": "captions/my-first-video.en.vtt"
+      }
+    ]
+  }
+]

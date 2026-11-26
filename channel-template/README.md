@@ -1,113 +1,126 @@
-# OurTube channel template
+# Make your OurTube channel
 
-Use this folder as the starting point for a channel that appears on OurTube.
+This folder is your channel. It lives in a normal public GitHub repository.
 
-![Placeholder channel banner](assets/banner.png)
+OurTube finds public repos with the topic `openyoutube-channel` and shows them
+as channels.
 
-## Create your channel
+Short sentences. Small steps. Take your time.
 
-1. Copy this folder into a new public GitHub repository, or use the OurTube repository as a GitHub template if that option is enabled.
-2. Rename the channel in `channel.json` and replace `assets/logo.png` and `assets/banner.png`.
-3. Add your videos to `videos.json` and add thumbnail images to `assets/` if you want custom thumbnails.
-4. Host the actual video and audio files outside the repository (see below).
-5. Add the topic **`openyoutube-channel`** to your repository. OurTube discovers channels through this GitHub topic.
-6. Make sure the repository is public and that `channel.json` and `videos.json` are valid JSON on the default branch.
+## 1. Use this template
 
-Discovery is cached for five minutes. Your channel should appear after the next refresh.
+Open the template repository on GitHub.
 
-## Files
+Tap **Use this template** > **Create a new repository**.
 
-```text
-channel-template/
-├── channel.json
-├── videos.json
-├── assets/
-│   ├── logo.png
-│   ├── banner.png
-│   └── thumbnail.png
-└── README.md
-```
+Choose **Public**.
 
-### `channel.json`
+Do **NOT** fork it. Forks are not listed.
+
+## 2. Edit `channel.json`
+
+Open `channel.json` and change `name` and `description`.
 
 ```json
 {
-  "name": "Open Studio",
-  "description": "A short description of your channel.",
+  "name": "My Channel",
+  "description": "Videos about things I love.",
   "logo": "assets/logo.png",
   "banner": "assets/banner.png"
 }
 ```
 
-| Field | Required | Notes |
-| --- | --- | --- |
-| `name` | Yes | Channel name shown across the app. |
-| `description` | Yes | Plain text. Empty strings are allowed. |
-| `logo` | Yes | Absolute URL or a path relative to the repository. |
-| `banner` | Yes | Absolute URL or a path relative to the repository. |
+## 3. Upload your logo and banner
 
-### `videos.json`
+Open the `assets` folder.
+
+Replace `logo.png` with your own square image.
+
+Replace `banner.png` with your own wide image.
+
+JPG, PNG and WEBP all work. The best file names are `logo` and `banner`.
+
+## 4. Upload a video with a release
+
+Go to **Releases** > **Draft a new release**.
+
+Type a tag, for example `video1`.
+
+Attach your video in the box that says **Attach binaries by dropping them here
+or selecting them**.
+
+Do **not** paste the file into the description box.
+
+Tap **Publish release**.
+
+Now wait. Open the **Actions** tab. Wait for a green tick.
+
+The Action makes a thumbnail, smaller video versions and a `media.json` file.
+
+Do **not** edit `media.json` by hand.
+
+## 5. Add the video to `videos.json`
+
+On the release page, find your video under **Assets**.
+
+Copy its link. It must contain `/releases/download/`.
+
+Add the video to `videos.json`. Only three fields are needed:
 
 ```json
 [
   {
-    "id": "unique-video-id",
-    "title": "Video title",
-    "description": "A description of the video.",
-    "thumbnail": "assets/thumbnail.png",
-    "videoUrl": "https://example.com/video.mp4",
-    "type": "video",
-    "tags": ["open source", "tutorial"],
-    "date": "2026-01-15",
-    "duration": "12:04"
+    "title": "My first video",
+    "description": "A short description.",
+    "videoUrl": "https://github.com/USERNAME/REPO/releases/download/video1/my-video.mp4"
   }
 ]
 ```
 
-| Field | Required | Notes |
-| --- | --- | --- |
-| `id` | Yes | Unique within the channel. Used in the watch URL. |
-| `title` | Yes | Video title. |
-| `description` | Yes | Plain text. |
-| `thumbnail` | No | Full URL or a path relative to the repository. If omitted or broken, the app tries the first frame of the video. |
-| `videoUrl` | Yes | Direct URL to an MP4/WebM file, or an MP3 for music. |
-| `type` | Yes | `"video"` or `"music"`. Music uses the audio player. |
-| `tags` | Yes | Array of strings. Used by search. |
-| `date` | Yes | Any date string, ideally ISO `YYYY-MM-DD`. |
-| `duration` | No | Text shown in the thumbnail corner, for example `"12:04"`. |
+OurTube fills in the rest for you.
 
-Relative asset paths such as `assets/logo.png` or `assets/thumbnail.png` are resolved against your repository's default branch on `raw.githubusercontent.com`.
+## 6. Add the topic
 
-## Add a thumbnail
+On your repository page, tap the gear icon next to **About**.
 
-1. Put the image in the `assets/` folder, for example `assets/my-video.jpg`.
-2. Set the video's `thumbnail` field to `"assets/my-video.jpg"`.
-3. Use a 16:9 image, ideally 1280×720 or larger.
+Add the topic `openyoutube-channel`.
 
-You can also use a full URL. If a thumbnail is missing or fails to load, OurTube falls back to the first frame of the video, then to a gray placeholder. The optional `duration` field is displayed on the thumbnail.
+Save it.
 
-## Host your media outside the repo
+## 7. Optional extras
 
-Never commit video or audio files to your channel repository. Git repositories are not a CDN, and large files make clones slow.
+**Captions:** put `captions/<video-id>.en.vtt` in the `captions` folder.
 
-Recommended options:
+**Posts:** add short updates to `posts.json`.
 
-- **GitHub Releases** — create a release and upload the media as release assets, then use the public asset URLs. Release assets support large files and range requests.
-- **Cloudflare R2** — upload to a bucket, connect a custom domain or public bucket URL, and use those URLs. Enable CORS and range requests if you serve media from a custom domain.
+**Custom thumbnail:** add `assets/<video-id>.jpg`.
 
-Use direct file URLs that end in `.mp4`, `.webm`, or `.mp3`. A link to a YouTube or Vimeo page will not work with the HTML5 player.
+**Want comments?** Open **Settings**, then **Features**, and turn on
+**Discussions**. OurTube will show a "Discuss on GitHub" button.
 
-The sample videos in this template use public demo files. Replace them with your own media.
+## Troubleshooting
 
-## Validation rules
+- **The video does not play.** The link must contain `/releases/download/`.
+  A link with `/releases/tag/` will not play.
+- **HEIC photos do not work.** Use JPG, PNG or WEBP.
+- **The channel does not show up.** The topic must be exactly
+  `openyoutube-channel`. The repository must be public.
+- **The Action fails.** Go to **Settings** > **Actions** > **General** >
+  **Workflow permissions** and choose **Read and write**.
+- **Wait a few minutes.** OurTube caches channel data for five minutes.
 
-OurTube validates both files with Zod. Repositories with missing, invalid, or malformed JSON are skipped without breaking the rest of the discovery feed. Keep IDs unique and use only `video` or `music` for the `type` field.
+## Files
 
-## Get listed
+```text
+channel.json          Your channel name, description, logo and banner
+videos.json           Your video list
+posts.json            Your short posts
+media.json            Made by the Action. Do not edit.
+assets/               Logo, banner and thumbnails
+captions/             Optional subtitle files
+.github/workflows/    The Action that processes releases
+```
 
-1. Push the files to the default branch of a public repository.
-2. Open the repository's **About** settings.
-3. Add the topic `openyoutube-channel`.
-4. Search the topic on GitHub to confirm it is listed: <https://github.com/topics/openyoutube-channel>.
+## Never put video files inside the repository
 
-To remove your channel from OurTube, remove the topic from your repository.
+GitHub rejects files over 100 MB in a repo. Use Releases instead.

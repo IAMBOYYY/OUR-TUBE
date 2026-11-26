@@ -1,48 +1,72 @@
 # OurTube
 
-OurTube is a free, open-source video and music site. Anyone can create a channel with just a GitHub repo. No approval needed.
+OurTube is a free, open-source video and music site. Anyone can create a
+channel with a public GitHub repository. There is no sign-in, no database and
+no backend to run.
 
-**[Live site](https://our-tube-nine.vercel.app/)** | **[Create a channel](https://github.com/IAMBOYYY/Channel-template)** | **[Contribute](https://github.com/IAMBOYYY/OUR-TUBE/blob/main/CONTRIBUTING.md)**
+**[Live site](https://our-tube-nine.vercel.app/)** | **[Channel template](https://github.com/IAMBOYYY/OUR-TUBE/tree/main/channel-template)** | **[Contribute](https://github.com/IAMBOYYY/OUR-TUBE/blob/main/CONTRIBUTING.md)**
 
 ## How it works
 
 - Every channel is a normal public GitHub repo.
 - The repo has the topic `openyoutube-channel`.
-- OurTube finds all repos with that topic automatically.
-- It reads `channel.json` and `videos.json` from each one.
-- Videos are stored in GitHub Releases (free), not in the repo.
+- OurTube finds repos with that topic through the GitHub Search API.
+- It reads `channel.json`, `videos.json`, `posts.json` and `media.json` from the
+  repo. All of them are optional.
+- Video and audio files live in GitHub Releases, not in the repo.
+- Thumbnails, durations and smaller video versions are made by a GitHub Action
+  in the channel repo.
 
 ```text
-Your GitHub repo (public, topic: openyoutube-channel)
+Your public GitHub repo (topic: openyoutube-channel)
         |
-        |  channel.json + videos.json
+        |  channel.json, videos.json, posts.json, media.json
         v
-     OurTube  (reads the files and shows your channel)
+     OurTube  (reads files, caches for 5 minutes)
         |
         |  videoUrl points to a Release file
         v
-GitHub Releases  (stores your video files for free)
+GitHub Releases  (stores your media for free)
 ```
+
+## GitHub-only design and its limits
+
+OurTube is intentionally stateless. There is no account and no server database.
+
+- **Subscribers** are the repo's GitHub stars. The number is read from GitHub.
+  The Subscribe button follows the channel in this browser only.
+- **Likes** are saved in this browser only. There is no global like count.
+- **Watch later, History and your Library** are saved in this browser only.
+- **Views** are not counted or shown.
+- **Comments** are not hosted on OurTube. If a channel turns on GitHub
+  Discussions, a "Discuss on GitHub" button opens the repo discussions.
+- **Reports** open a pre-filled issue on the OurTube repository.
+
+Your data never leaves your device. The trade-off is that follows, likes and
+history do not follow you to another device. There is no sign-in anywhere.
+
+The data layer is separate from the UI, so a database could be added later
+without rewriting the pages.
 
 ## Create your channel
 
-This is the most important part. Follow the steps in order.
+This is the important part. Follow the steps in order.
 
-### Step 1: Make your repo from the template
+### Step 1: Use the template
 
-Open the template: <https://github.com/IAMBOYYY/Channel-template>
+Open the template:
+<https://github.com/IAMBOYYY/OUR-TUBE/tree/main/channel-template>
 
 Tap **Use this template** > **Create a new repository**.
 
-Name it anything you like. Choose **Public**.
+Name it anything. Choose **Public**.
 
 Do **NOT** fork it. Forks are not listed.
 
 ### Step 2: Edit `channel.json`
 
-Set `"name"` and `"description"`.
-
-Replace `assets/logo.png` (square, 400x400) and `assets/banner.png` (2048x512) with your own images.
+Set `name` and `description`. Replace `assets/logo.png` and
+`assets/banner.png` with your own images. JPG, PNG and WEBP work.
 
 ```json
 {
@@ -53,103 +77,146 @@ Replace `assets/logo.png` (square, 400x400) and `assets/banner.png` (2048x512) w
 }
 ```
 
-### Step 3: Upload your video
+`channel.json` is optional. If it is missing, OurTube uses the repo name, the
+repo description and the GitHub avatar.
 
-Go to **Releases** > **Create a new release**.
+### Step 3: Upload a video with a release
 
-Type a tag (for example `video1`).
+Go to **Releases** > **Draft a new release**. Type a tag, for example `video1`.
 
-IMPORTANT: Attach the video using the **"Attach binaries by dropping them here or selecting them"** box at the bottom. Do **not** put the file inside the description text box.
+Attach your video using the **Attach binaries by dropping them here or
+selecting them** box. Do **not** paste the file into the description.
 
-Wait for the upload to finish, then tap **Publish release**.
+Publish the release.
 
-### Step 4: Copy the video link
+Open the **Actions** tab and wait for a green tick. The Action makes a
+thumbnail, smaller MP4 versions and a `media.json` file. Do not edit
+`media.json` by hand.
 
-On the release page, find the video file under **Assets**.
+### Step 4: Add the video to `videos.json`
 
-Long-press it and copy the link address. It must look like this:
+On the release page, copy the direct link under **Assets**. It must contain
+`/releases/download/`.
 
-```text
-https://github.com/USERNAME/REPO/releases/download/TAG/FILE.mp4
+Only three fields are required:
+
+```json
+[
+  {
+    "title": "My first video",
+    "description": "A short description.",
+    "videoUrl": "https://github.com/USERNAME/REPO/releases/download/video1/my-video.mp4"
+  }
+]
 ```
 
-It must contain `/releases/download/`. A link containing `/releases/tag/` will **NOT** play.
+OurTube fills in the rest: id, type, date, thumbnail, duration and Shorts.
 
-### Step 5: Add the video to `videos.json`
+### Step 5: Add the topic
 
-Add your video as a new entry in the list. Here is a full example:
+On the repo page, tap the gear icon next to **About**.
+
+Add the topic `openyoutube-channel` and save.
+
+Wait about 5 minutes. The channel appears on the live site.
+
+### Optional
+
+- **Comments:** open **Settings**, then **Features**, and turn on
+  **Discussions**. OurTube shows a "Discuss on GitHub" button.
+- **Captions:** add `captions/<video-id>.en.vtt`.
+- **Posts:** add short updates to `posts.json`.
+- **Custom thumbnail:** add `assets/<video-id>.jpg`.
+
+## Data format
+
+All files are optional. A channel with zero videos still appears.
+
+### `channel.json`
+
+```json
+{
+  "name": "My Channel",
+  "description": "Plain text.",
+  "logo": "assets/logo.png",
+  "banner": "assets/banner.png"
+}
+```
+
+### `videos.json`
+
+Only `title` and `videoUrl` are required.
 
 ```json
 [
   {
     "id": "my-first-video",
-    "title": "My First Video",
-    "description": "This is my first video on OurTube.",
+    "title": "My first video",
+    "description": "Optional.",
+    "videoUrl": "https://github.com/USER/REPO/releases/download/video1/file.mp4",
     "thumbnail": "assets/my-first-video.jpg",
-    "videoUrl": "https://github.com/USERNAME/REPO/releases/download/video1/my-first-video.mp4",
-    "duration": "3:20",
     "type": "video",
-    "tags": ["intro", "first"],
+    "tags": ["intro"],
+    "date": "2026-11-04",
+    "duration": "3:20",
+    "captions": [{ "lang": "en", "label": "English", "url": "captions/my-first-video.en.vtt" }]
+  }
+]
+```
+
+Defaults:
+
+- `id` comes from the file name in `videoUrl`.
+- `type` is `music` for audio extensions, otherwise `video`.
+- `date` accepts `2026-11-4` and is fixed to `2026-11-04`. If missing, the
+  release asset date is used.
+- `tags` is an empty list.
+- `thumbnail` is found in `assets/` by id, then `assets/thumbnails/`.
+- `duration` comes from `media.json`, then the MP4 header, then the manual
+  field.
+- `isShort` is true for a video of 60 seconds or less.
+
+Old style entries with `id`, `type`, `date: "2026-11-4"`,
+`duration: "1:00"` and `thumbnail` still work.
+
+### `posts.json`
+
+```json
+[
+  {
+    "text": "A short update.",
+    "image": "assets/update.jpg",
     "date": "2026-11-04"
   }
 ]
 ```
 
-| Field | What it is | Required |
-| --- | --- | --- |
-| `id` | Unique name for the video, no spaces | Yes |
-| `title` | Video title shown on the site | Yes |
-| `description` | Short text about the video | Yes |
-| `thumbnail` | Path or link to a 1280x720 image | No |
-| `videoUrl` | Direct file link from GitHub Releases | Yes |
-| `duration` | Length, like `3:20` | No |
-| `type` | `"video"` or `"music"` | Yes |
-| `tags` | List of keywords | No |
-| `date` | Upload date as `YYYY-MM-DD` | Yes |
+`text` is required. `id` and `date` have defaults.
 
-The date format is `YYYY-MM-DD`, for example `2026-11-04`. Always use zeros.
+### `media.json`
 
-`type` is `"video"` or `"music"`. Duration and tags are optional.
+Made by the Action. Do not edit it. It contains durations, dimensions,
+thumbnails and the quality list.
 
-### Step 6: Add a thumbnail
+## Moderation with `blocklist.json`
 
-Put a 1280x720 image in the `assets/` folder.
+The OurTube repo root has `blocklist.json`:
 
-Then set `"thumbnail": "assets/your-image.jpg"`.
+```json
+{
+  "owners": [],
+  "repos": ["owner/repo"],
+  "videos": ["owner/repo/video-id"]
+}
+```
 
-If you skip this, OurTube uses the first frame of the video.
-
-### Step 7: Make your channel appear
-
-On your repo page, tap the gear icon next to **About**.
-
-Add the topic `openyoutube-channel` and save.
-
-### Step 8: Wait about 5 minutes
-
-Your channel and videos will show up on the live site.
-
-## Uploading more videos later
-
-1. Upload the new video to **Releases** and publish it.
-2. Copy the direct link from **Assets** (it must contain `/releases/download/`).
-3. Add a new entry to `videos.json`.
-4. Add a thumbnail in `assets/` and set it in the entry.
-
-That is the same as steps 3 to 6.
-
-## Tips and troubleshooting
-
-- **Video does not play:** `videoUrl` must be the direct file link (`/releases/download/`), not the release page link.
-- **Use `.mp4` (H.264).** `.mov` and `.mkv` often do not play in browsers.
-- **Avoid spaces in file names.**
-- **Channel not showing:** the repo must be Public, the topic must be exactly `openyoutube-channel`, the JSON files must be valid (check at [jsonlint.com](https://jsonlint.com)), and you may need to wait 5 minutes.
-- **Never put video files inside the repo itself.** GitHub rejects files over 100 MB. Use Releases (up to 2 GB per file).
-- **Do not add the topic to the template repo itself.**
+Blocked owners, repos and videos are filtered out of discovery, search, lists
+and pages.
 
 ## For developers: run and deploy
 
-OurTube is built with **Next.js**, **TypeScript**, and **Tailwind CSS**.
+OurTube uses **Next.js**, **TypeScript**, **Tailwind CSS**, **zod** and
+**lucide-react**.
 
 ### Run it locally
 
@@ -163,34 +230,42 @@ npm run dev
 
 Open <http://localhost:3000>.
 
-Add `GITHUB_TOKEN` to `.env.local`. Use a GitHub classic token with no scopes. This is optional but recommended, because it raises GitHub API rate limits.
+### Environment variables
 
 ```dotenv
-GITHUB_TOKEN=your_token_here
+# Optional. Raises GitHub API rate limits. No scopes are needed.
+GITHUB_TOKEN=
+
+# Optional. Used by sitemap and robots.
+NEXT_PUBLIC_SITE_URL=https://our-tube-nine.vercel.app
 ```
+
+There are no database keys. The site fully works with no environment
+variables.
 
 ### Deploy to Vercel
 
 1. Import the repo on [Vercel](https://vercel.com/new).
-2. Add `GITHUB_TOKEN` in the environment variables.
-3. Deploy.
+2. Add `GITHUB_TOKEN` if you want higher GitHub rate limits.
+3. Add `NEXT_PUBLIC_SITE_URL` with your domain.
+4. Deploy.
 
-It works on the free plan. No database or extra services are needed.
+The free plan is enough.
 
 ### Project structure
 
 ```text
-app/                 Pages: home feed, channels, channel, watch
-components/          Cards, header, players, search, UI
-lib/                 GitHub discovery, types, constants, helpers
-channel-template/    Starter repo for creators
+app/                 Pages: home, subs, music, channels, shorts, watch, library
+components/          Cards, header, player, search, sheets and UI
+lib/                 GitHub discovery, types, constants, player helpers
+channel-template/    Starter repo for creators (copy the hidden .github folder too)
+blocklist.json       Owners, repos and videos to hide
 ```
 
 ## Contributing
 
-Read [CONTRIBUTING.md](https://github.com/IAMBOYYY/OUR-TUBE/blob/main/CONTRIBUTING.md) first.
-
-Ideas are welcome: better search, playlists, comments, and subscriptions. Open an issue or send a pull request on the [main repo](https://github.com/IAMBOYYY/OUR-TUBE).
+Read [CONTRIBUTING.md](https://github.com/IAMBOYYY/OUR-TUBE/blob/main/CONTRIBUTING.md)
+first. Ideas and pull requests are welcome.
 
 ## License
 

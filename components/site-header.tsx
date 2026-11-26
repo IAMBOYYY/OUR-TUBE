@@ -1,82 +1,66 @@
 "use client";
 
-import { Home, Menu, Music, Play, Search, Tv, X } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-  type RefObject,
-} from "react";
+  Clapperboard,
+  Clock,
+  History,
+  Home,
+  ListVideo,
+  Menu,
+  Music,
+  Play,
+  Plus,
+  Search,
+  ThumbsUp,
+  Tv,
+  User,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { useSearch, type VideoFilter } from "@/components/search-provider";
+import { SearchBox } from "@/components/search-box";
 import { ThemeToggle } from "@/components/theme-toggle";
+import type { SuggestionIndex } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-const filters: Array<{ value: VideoFilter; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "video", label: "Videos" },
-  { value: "music", label: "Music" },
+const TABS = [
+  { href: "/", label: "Home" },
+  { href: "/subs", label: "Subs" },
+  { href: "/music", label: "Music" },
+  { href: "/channels", label: "Channels" },
 ];
 
-export function SiteHeader() {
-  const router = useRouter();
+const DRAWER_LINKS: Array<{ href: string; label: string; icon: ReactNode }> = [
+  { href: "/", label: "Home", icon: <Home className="h-5 w-5" /> },
+  { href: "/subs", label: "Subs", icon: <ListVideo className="h-5 w-5" /> },
+  { href: "/music", label: "Music", icon: <Music className="h-5 w-5" /> },
+  { href: "/channels", label: "Channels", icon: <Tv className="h-5 w-5" /> },
+  { href: "/you", label: "You", icon: <User className="h-5 w-5" /> },
+  { href: "/history", label: "History", icon: <History className="h-5 w-5" /> },
+  { href: "/watch-later", label: "Watch later", icon: <Clock className="h-5 w-5" /> },
+  { href: "/liked", label: "Liked videos", icon: <ThumbsUp className="h-5 w-5" /> },
+  { href: "/create", label: "Create a channel", icon: <Plus className="h-5 w-5" /> },
+];
+
+export function SiteHeader({ index }: { index: SuggestionIndex }) {
   const pathname = usePathname();
-  const { filter, reset, setFilter, setQuery } = useSearch();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const drawerRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const mobileInputRef = useRef<HTMLInputElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
-    if (!mobileSearchOpen) {
+    if (!searchOpen && !drawerOpen) {
       return;
     }
 
-    mobileInputRef.current?.focus();
-  }, [mobileSearchOpen]);
-
-  useEffect(() => {
-    if (!drawerOpen) {
-      return;
-    }
-
-    const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
-
-    closeButtonRef.current?.focus();
     document.body.style.overflow = "hidden";
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        setSearchOpen(false);
         setDrawerOpen(false);
-        return;
-      }
-
-      if (event.key !== "Tab" || !drawerRef.current) {
-        return;
-      }
-
-      const focusable = drawerRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
-      );
-
-      if (focusable.length === 0) {
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
       }
     }
 
@@ -85,154 +69,110 @@ export function SiteHeader() {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
-      previousFocus?.focus();
     };
-  }, [drawerOpen]);
+  }, [drawerOpen, searchOpen]);
 
-  function selectFilter(value: VideoFilter) {
-    setFilter(value);
-
-    if (pathname !== "/") {
-      router.push("/");
-    }
-  }
-
-  function goHome() {
-    reset();
-    setDrawerOpen(false);
-    router.push("/");
-  }
-
-  function goMusic() {
-    reset();
-    setFilter("music");
-    setDrawerOpen(false);
-    router.push("/");
-  }
-
-  function goChannels() {
-    setDrawerOpen(false);
-    router.push("/channels");
-  }
-
-  function closeMobileSearch() {
-    setMobileSearchOpen(false);
-    setQuery("");
-  }
-
-  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (mobileSearchOpen) {
-      mobileInputRef.current?.blur();
-    }
-
-    if (pathname !== "/") {
-      router.push("/");
-    }
+  function isTabActive(href: string): boolean {
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
   }
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-border bg-background">
+      <header className="sticky top-0 z-40 border-b border-border bg-background">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-1 px-3 sm:px-4 lg:px-6">
-          {mobileSearchOpen ? (
-            <div
-              className="flex w-full items-center gap-2"
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  closeMobileSearch();
-                }
-              }}
-            >
-              <button
-                type="button"
-                onClick={closeMobileSearch}
-                aria-label="Close search"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              <SearchField
-                inputRef={mobileInputRef}
-                onSubmit={handleSearchSubmit}
-              />
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={drawerOpen}
+            className="hidden h-10 w-10 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground md:grid"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <Link
+            href="/"
+            className="ml-1 flex shrink-0 items-center gap-1.5 rounded-md px-1 py-1"
+            aria-label="OurTube home"
+          >
+            <Play
+              className="h-6 w-6 fill-accent text-accent"
+              strokeWidth={0}
+              aria-hidden="true"
+            />
+            <span className="text-lg font-semibold tracking-tight">OurTube</span>
+          </Link>
+
+          <div className="hidden flex-1 justify-center px-6 md:flex">
+            <div className="w-full max-w-xl">
+              <SearchBox index={index} />
             </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(true)}
-                aria-label="Open menu"
-                aria-expanded={drawerOpen}
-                aria-controls="site-drawer"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+          </div>
 
-              <Link
-                href="/"
-                onClick={reset}
-                className="ml-1 flex shrink-0 items-center gap-1.5 rounded-md px-1 py-1"
-                aria-label="OurTube home"
-              >
-                <Play
-                  className="h-6 w-6 fill-accent text-accent"
-                  strokeWidth={0}
-                  aria-hidden="true"
-                />
-                <span className="text-lg font-semibold tracking-tight">
-                  OurTube
-                </span>
-              </Link>
-
-              <div className="hidden flex-1 justify-center px-4 md:flex">
-                <SearchField onSubmit={handleSearchSubmit} />
-              </div>
-
-              <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0">
-                <button
-                  type="button"
-                  onClick={() => setMobileSearchOpen(true)}
-                  aria-label="Open search"
-                  className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground md:hidden"
-                >
-                  <Search className="h-5 w-5" />
-                </button>
-                <ThemeToggle />
-              </div>
-            </>
-          )}
+          <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Open search"
+              className="grid h-10 w-10 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground md:hidden"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
 
-        <nav aria-label="Video filters" className="border-b border-border">
-          <div className="mx-auto flex max-w-[1600px] gap-2 overflow-x-auto px-3 py-2 sm:px-4 lg:px-6">
-            {filters.map((item) => {
-              const active = filter === item.value;
+        <nav aria-label="Main sections" className="border-t border-border/60">
+          <div className="mx-auto flex max-w-[1600px] gap-6 overflow-x-auto px-3 sm:px-4 lg:px-6">
+            {TABS.map((tab) => {
+              const active = isTabActive(tab.href);
 
               return (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => selectFilter(item.value)}
-                  aria-pressed={active}
-                  className={
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative shrink-0 py-2.5 text-sm transition-colors",
                     active
-                      ? "shrink-0 rounded-full bg-foreground px-3.5 py-1.5 text-sm font-medium text-background"
-                      : "shrink-0 rounded-full bg-surface px-3.5 py-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
-                  }
+                      ? "font-semibold text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-accent"
+                      : "text-muted hover:text-foreground",
+                  )}
                 >
-                  {item.label}
-                </button>
+                  {tab.label}
+                </Link>
               );
             })}
           </div>
         </nav>
       </header>
 
+      {searchOpen ? (
+        <div className="fixed inset-0 z-[85] flex flex-col bg-background md:hidden">
+          <div className="flex h-14 items-center gap-2 px-2">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(false)}
+              aria-label="Close search"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <SearchBox
+                index={index}
+                autoFocus
+                variant="plain"
+                onClose={() => setSearchOpen(false)}
+                placeholder="Search OurTube"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {drawerOpen ? (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-[85]">
           <button
             type="button"
             aria-label="Close menu"
@@ -240,106 +180,116 @@ export function SiteHeader() {
             className="absolute inset-0 bg-black/40"
           />
           <div
-            id="site-drawer"
-            ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-label="Site navigation"
-            className="absolute inset-y-0 left-0 w-64 border-r border-border bg-background p-4"
+            className="absolute inset-y-0 left-0 w-64 overflow-y-auto border-r border-border bg-background p-3"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">Menu</span>
+            <div className="flex items-center justify-between px-1">
+              <span className="flex items-center gap-1.5 text-sm font-semibold">
+                <Play
+                  className="h-5 w-5 fill-accent text-accent"
+                  strokeWidth={0}
+                  aria-hidden="true"
+                />
+                OurTube
+              </span>
               <button
-                ref={closeButtonRef}
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Close menu"
-                className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
+                className="grid h-10 w-10 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <nav className="mt-5 space-y-1">
-              <DrawerButton icon={<Home className="h-5 w-5" />} onClick={goHome}>
-                Home
-              </DrawerButton>
-              <DrawerButton
-                icon={<Music className="h-5 w-5" />}
-                onClick={goMusic}
-              >
-                Music
-              </DrawerButton>
-              <DrawerButton
-                icon={<Tv className="h-5 w-5" />}
-                onClick={goChannels}
-              >
-                Channels
-              </DrawerButton>
+            <nav className="mt-4 space-y-0.5">
+              {DRAWER_LINKS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setDrawerOpen(false)}
+                  className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-surface"
+                >
+                  <span className="text-muted">{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
             </nav>
           </div>
         </div>
       ) : null}
+
+      <nav
+        aria-label="Mobile navigation"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        <div className="grid h-14 grid-cols-4">
+          <BottomLink href="/" label="Home" active={pathname === "/"}>
+            <Home
+              className={cn("h-6 w-6", pathname === "/" && "fill-current")}
+            />
+          </BottomLink>
+          <BottomLink
+            href="/shorts"
+            label="Shorts"
+            active={pathname.startsWith("/shorts")}
+          >
+            <Clapperboard
+              className={cn(
+                "h-6 w-6 text-accent",
+                pathname.startsWith("/shorts") && "fill-current",
+              )}
+            />
+          </BottomLink>
+          <BottomLink href="/create" label="Create" active={pathname === "/create"}>
+            <Plus className="h-7 w-7" />
+          </BottomLink>
+          <BottomLink
+            href="/you"
+            label="You"
+            active={["/you", "/history", "/watch-later", "/liked"].some((path) =>
+              pathname.startsWith(path),
+            )}
+          >
+            <User
+              className={cn(
+                "h-6 w-6",
+                ["/you", "/history", "/watch-later", "/liked"].some((path) =>
+                  pathname.startsWith(path),
+                ) && "fill-current",
+              )}
+            />
+          </BottomLink>
+        </div>
+      </nav>
     </>
   );
 }
 
-function SearchField({
-  inputRef,
-  onSubmit,
-}: {
-  inputRef?: RefObject<HTMLInputElement | null>;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-}) {
-  const { query, setQuery } = useSearch();
-
-  return (
-    <form
-      role="search"
-      onSubmit={onSubmit}
-      className="flex h-10 w-full max-w-xl items-center gap-2 rounded-full border border-border bg-surface px-4 transition-colors focus-within:border-foreground"
-    >
-      <Search className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
-      <input
-        ref={inputRef}
-        type="search"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search"
-        aria-label="Search videos"
-        className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted"
-      />
-      {query ? (
-        <button
-          type="button"
-          onClick={() => setQuery("")}
-          aria-label="Clear search"
-          className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-background hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      ) : null}
-    </form>
-  );
-}
-
-function DrawerButton({
-  icon,
+function BottomLink({
+  href,
+  label,
+  active,
   children,
-  onClick,
 }: {
-  icon: ReactNode;
+  href: string;
+  label: string;
+  active: boolean;
   children: ReactNode;
-  onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-surface"
+    <Link
+      href={href}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "grid min-h-11 place-items-center transition-colors",
+        active ? "text-foreground" : "text-muted hover:text-foreground",
+      )}
     >
-      <span className="text-muted">{icon}</span>
       {children}
-    </button>
+    </Link>
   );
 }

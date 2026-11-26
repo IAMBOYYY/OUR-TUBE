@@ -1,57 +1,87 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { NoResults } from "@/components/feed-states";
-import { useSearch } from "@/components/search-provider";
-import { VideoGridSkeleton } from "@/components/skeletons";
+import { ShortsRow } from "@/components/shorts-row";
 import { VideoCard } from "@/components/video-card";
 import type { VideoWithChannel } from "@/lib/types";
-import { matchesQuery, shuffle } from "@/lib/utils";
+import { pickRandom } from "@/lib/utils";
 
 type HomeFeedProps = {
   videos: VideoWithChannel[];
+  shorts: VideoWithChannel[];
 };
 
-export function HomeFeed({ videos }: HomeFeedProps) {
-  const { query, filter } = useSearch();
-  const [orderedVideos, setOrderedVideos] = useState<
-    VideoWithChannel[] | null
-  >(null);
+const GRID_CLASS =
+  "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
+export function HomeFeed({ videos, shorts }: HomeFeedProps) {
+  const [rows, setRows] = useState<VideoWithChannel[][]>([]);
 
   useEffect(() => {
-    setOrderedVideos(shuffle(videos));
-  }, [videos]);
+    if (shorts.length === 0) {
+      setRows([]);
+      return;
+    }
 
-  const filteredVideos = useMemo(
-    () =>
-      (orderedVideos ?? []).filter(
-        (video) =>
-          (filter === "all" || video.type === filter) &&
-          matchesQuery(video, query),
-      ),
-    [filter, orderedVideos, query],
-  );
+    const regular = videos.filter((video) => !video.isShort);
+    const chunks: VideoWithChannel[][] = [];
 
-  if (orderedVideos === null) {
-    return (
-      <VideoGridSkeleton
-        count={Math.min(Math.max(videos.length, 8), 12)}
-      />
-    );
-  }
+    if (regular.length < 2) {
+      chunks.push(pickRandom(shorts, Math.min(8, shorts.length)));
+    }
 
-  if (filteredVideos.length === 0) {
-    return <NoResults />;
+    for (let index = 2; index <= regular.length; index += 8) {
+      chunks.push(pickRandom(shorts, Math.min(8, shorts.length)));
+    }
+
+    setRows(chunks);
+  }, [shorts, videos]);
+
+  const regular = videos.filter((video) => !video.isShort);
+  const firstChunk = regular.slice(0, 2);
+  const remaining = regular.slice(2);
+  const groups: VideoWithChannel[][] = [];
+
+  for (let index = 0; index < remaining.length; index += 8) {
+    groups.push(remaining.slice(index, index + 8));
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {filteredVideos.map((video) => (
-        <VideoCard
-          key={`${video.owner}/${video.repo}/${video.id}`}
-          video={video}
-        />
+    <div className="space-y-6">
+      {shorts.length > 0 && firstChunk.length < 2 && rows[0] ? (
+        <ShortsRow shorts={rows[0]} />
+      ) : null}
+
+      {firstChunk.length > 0 ? (
+        <div className={GRID_CLASS}>
+          {firstChunk.map((video) => (
+            <VideoCard
+              key={`${video.owner}/${video.repo}/${video.id}`}
+              video={video}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {shorts.length > 0 && firstChunk.length >= 2 && rows[0] ? (
+        <ShortsRow shorts={rows[0]} />
+      ) : null}
+
+      {groups.map((group, groupIndex) => (
+        <div key={groupIndex} className="space-y-6">
+          <div className={GRID_CLASS}>
+            {group.map((video) => (
+              <VideoCard
+                key={`${video.owner}/${video.repo}/${video.id}`}
+                video={video}
+              />
+            ))}
+          </div>
+          {shorts.length > 0 && rows[groupIndex + 1] ? (
+            <ShortsRow shorts={rows[groupIndex + 1]} />
+          ) : null}
+        </div>
       ))}
     </div>
   );

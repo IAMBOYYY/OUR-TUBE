@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { VideoOff } from "lucide-react";
-import Link from "next/link";
+import { Tv } from "lucide-react";
 
-import { MediaImage } from "@/components/media-image";
-import { getChannels } from "@/lib/github";
-import { channelHref } from "@/lib/utils";
+import { ChannelRow } from "@/components/channel-row";
+import { EmptyState } from "@/components/empty-state";
+import { FeedError } from "@/components/feed-states";
+import { getSiteData } from "@/lib/github";
 
 export const revalidate = 300;
+export const maxDuration = 60;
 
 export const metadata: Metadata = {
   title: "Channels",
@@ -14,49 +15,37 @@ export const metadata: Metadata = {
 };
 
 export default async function ChannelsPage() {
-  const channels = await getChannels();
+  const { channels, failed } = await getSiteData();
+
+  if (failed && channels.length === 0) {
+    return <FeedError />;
+  }
+
+  const sorted = [...channels].sort((a, b) => {
+    if (b.stars !== a.stars) {
+      return b.stars - a.stars;
+    }
+
+    return a.name.localeCompare(b.name);
+  });
 
   return (
     <div className="mx-auto max-w-[1600px] px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
       <h1 className="text-xl font-semibold tracking-tight">Channels</h1>
 
-      {channels.length === 0 ? (
-        <div className="flex flex-col items-center px-4 py-24 text-center">
-          <VideoOff className="h-10 w-10 text-muted" aria-hidden="true" />
-          <p className="mt-4 text-lg font-semibold">No channels right now</p>
-          <p className="mt-2 text-sm text-muted">
-            Check back soon. New channels show up here.
-          </p>
-        </div>
+      {sorted.length === 0 ? (
+        <EmptyState
+          icon={<Tv className="h-10 w-10" />}
+          title="No channels right now"
+          description="New channels show up here after they add the openyoutube-channel topic."
+        />
       ) : (
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {channels.map((channel) => (
-            <Link
+        <div className="mt-2">
+          {sorted.map((channel) => (
+            <ChannelRow
               key={`${channel.owner}/${channel.repo}`}
-              href={channelHref(channel.owner, channel.repo)}
-              className="group flex gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-surface"
-            >
-              <MediaImage
-                src={channel.logo}
-                alt={`${channel.name} logo`}
-                className="h-14 w-14 shrink-0 rounded-full border border-border"
-              />
-              <div className="min-w-0">
-                <h2 className="truncate text-sm font-medium transition-colors group-hover:text-muted">
-                  {channel.name}
-                </h2>
-                <p className="mt-0.5 truncate text-xs text-muted">
-                  @{channel.owner}/{channel.repo}
-                </p>
-                <p className="mt-1 line-clamp-2 text-xs text-muted">
-                  {channel.description || "No description."}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  {channel.videos.length}{" "}
-                  {channel.videos.length === 1 ? "video" : "videos"}
-                </p>
-              </div>
-            </Link>
+              channel={channel}
+            />
           ))}
         </div>
       )}

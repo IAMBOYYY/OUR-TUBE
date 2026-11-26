@@ -1,0 +1,12 @@
+[
+  {
+    "text": "A short update about what I am working on.",
+    "date": "2026-11-04"
+  },
+  {
+    "id": "behind-the-scenes",
+    "text": "Behind the scenes of the latest video.",
+    "image": "assets/behind-the-scenes.jpg",
+    "date": "2026-11-10"
+  }
+]

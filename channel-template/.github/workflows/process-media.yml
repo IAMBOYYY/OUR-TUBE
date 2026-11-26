@@ -1,0 +1,220 @@
+name: Process media
+
+on:
+  release:
+    types: [published, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: process-media-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Process release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          work="$(mktemp -d)"
+          mkdir -p "$work/assets"
+
+          is_media() {
+            case "${1,,}" in
+              *.mp4|*.mov|*.m4v|*.webm|*.mkv|*.mp3|*.m4a|*.ogg|*.oga|*.wav|*.flac|*.aac|*.opus) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          is_generated() {
+            case "${1,,}" in
+              *-[0-9]*p.mp4|*.thumb.jpg) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          is_video() {
+            case "${1,,}" in
+              *.mp4|*.mov|*.m4v|*.webm|*.mkv) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          ensure_media_json() {
+            if [ ! -f media.json ]; then
+              echo '{"files":{}}' > media.json
+            fi
+          }
+
+          download_url() {
+            echo "https://github.com/${REPO}/releases/download/$1/$2"
+          }
+
+          process_tag() {
+            local tag="$1"
+            local assets_json
+            assets_json="$(gh release view "$tag" --repo "$REPO" --json assets -q '.assets')"
+            local count
+            count="$(echo "$assets_json" | jq 'length')"
+
+            local i=0
+            while [ "$i" -lt "$count" ]; do
+              local name
+              name="$(echo "$assets_json" | jq -r ".[$i].name")"
+              i=$((i + 1))
+
+              is_media "$name" || continue
+              is_generated "$name" && continue
+
+              local dir="$work/$tag"
+              mkdir -p "$dir"
+              local source="$dir/$name"
+
+              if [ ! -f "$source" ]; then
+                gh release download "$tag" --repo "$REPO" --pattern "$name" --dir "$dir" --clobber
+              fi
+
+              [ -f "$source" ] || continue
+
+              local probe
+              probe="$(ffprobe -v error -print_format json -show_format -show_streams "$source")"
+              local width height duration
+              width="$(echo "$probe" | jq -r '[.streams[] | select(.codec_type=="video")][0].width // 0')"
+              height="$(echo "$probe" | jq -r '[.streams[] | select(.codec_type=="video")][0].height // 0')"
+              duration="$(echo "$probe" | jq -r '(.format.duration // "0") | tonumber? // 0')"
+
+              local shorter
+              if [ "$width" -gt 0 ] && [ "$height" -gt 0 ]; then
+                if [ "$width" -lt "$height" ]; then shorter="$width"; else shorter="$height"; fi
+              else
+                shorter=0
+              fi
+
+              local thumb_name="${name}.thumb.jpg"
+              local thumb_path="$dir/$thumb_name"
+              local thumb_exists
+              thumb_exists="$(echo "$assets_json" | jq -r --arg n "$thumb_name" 'any(.[]; .name == $n)')"
+
+              if [ ! -f "$thumb_path" ] && [ "$thumb_exists" != "true" ] && [ "$shorter" -gt 0 ]; then
+                local frame
+                frame="$(awk -v d="$duration" 'BEGIN { t = d * 0.1; if (t > 1) t = 1; if (t < 0) t = 0; printf "%.3f", t }')"
+                if ffmpeg -y -v error -ss "$frame" -i "$source" -frames:v 1 -vf "scale='min(1280,iw)':-2" "$thumb_path" >/dev/null 2>&1; then
+                  gh release upload "$tag" "$thumb_path" --repo "$REPO" --clobber
+                fi
+              fi
+
+              local sources="[]"
+
+              if is_video "$name" && [ "$shorter" -gt 0 ]; then
+                local heights=(144 240 360 480 720 1080)
+                for h in "${heights[@]}"; do
+                  if [ "$h" -ge "$shorter" ]; then
+                    continue
+                  fi
+
+                  local base="${name%.*}"
+                  local rendition="${base}-${h}p.mp4"
+                  local rendition_path="$dir/$rendition"
+                  local exists
+                  exists="$(echo "$assets_json" | jq -r --arg n "$rendition" 'any(.[]; .name == $n)')"
+
+                  if [ ! -f "$rendition_path" ] && [ "$exists" != "true" ]; then
+                    local scale
+                    if [ "$width" -ge "$height" ]; then
+                      scale="-2:${h}"
+                    else
+                      scale="${h}:-2"
+                    fi
+
+                    if ffmpeg -y -v error -i "$source" \
+                      -vf "scale=${scale}:flags=lanczos" \
+                      -c:v libx264 -preset veryfast -crf 26 \
+                      -c:a aac -b:a 128k \
+                      -movflags +faststart \
+                      "$rendition_path" >/dev/null 2>&1; then
+                      gh release upload "$tag" "$rendition_path" --repo "$REPO" --clobber
+                    fi
+                  fi
+
+                  if [ -f "$rendition_path" ] || [ "$exists" = "true" ]; then
+                    local url
+                    url="$(download_url "$tag" "$rendition")"
+                    sources="$(echo "$sources" | jq --arg label "${h}p" --argjson height "$h" --arg url "$url" '. + [{label:$label,height:$height,url:$url}]')"
+                  fi
+                done
+
+                local original_label="Original"
+                if [ "$shorter" -gt 0 ]; then
+                  original_label="${shorter}p"
+                fi
+
+                local original_url
+                original_url="$(download_url "$tag" "$name")"
+                sources="$(echo "$sources" | jq --arg label "$original_label" --argjson height "$shorter" --arg url "$original_url" '. + [{label:$label,height:$height,url:$url}]')"
+              else
+                local original_url
+                original_url="$(download_url "$tag" "$name")"
+                sources="$(echo "$sources" | jq --arg url "$original_url" '. + [{label:"Original",url:$url}]')"
+              fi
+
+              local thumb_url=""
+              if [ -f "$thumb_path" ] || [ "$thumb_exists" = "true" ]; then
+                thumb_url="$(download_url "$tag" "$thumb_name")"
+              fi
+
+              ensure_media_json
+              local key="${tag}/${name}"
+              local entry
+              entry="$(jq -n \
+                --argjson duration "${duration:-0}" \
+                --argjson width "${width:-0}" \
+                --argjson height "${height:-0}" \
+                --arg thumbnail "$thumb_url" \
+                --argjson sources "$sources" \
+                '{durationSeconds: $duration, width: $width, height: $height, thumbnail: $thumbnail, sources: $sources}')"
+              jq --arg key "$key" --argjson entry "$entry" '.files[$key] = $entry' media.json > "$work/media.tmp"
+              mv "$work/media.tmp" media.json
+            done
+          }
+
+          if [ -n "${RELEASE_TAG:-}" ]; then
+            process_tag "$RELEASE_TAG"
+          else
+            while IFS= read -r tag; do
+              [ -n "$tag" ] || continue
+              process_tag "$tag"
+            done < <(gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName')
+          fi
+
+          if [ -f media.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add media.json
+            if git diff --cached --quiet; then
+              echo "media.json is already up to date."
+            else
+              git commit -m "Update media.json [skip ci]"
+              git pull --rebase
+              git push
+            fi
+          fi
